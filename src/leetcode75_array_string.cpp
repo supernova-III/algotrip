@@ -152,6 +152,7 @@ std::string reverseVowels(std::string s) {
   return s;
 }
 
+// Two pointers solution
 std::string reverseVowels_tp(std::string s) {
   auto notVowel = [](char c) {
     switch (c) {
@@ -169,18 +170,24 @@ std::string reverseVowels_tp(std::string s) {
     return true;
   };
 
-  size_t i = 0;
-  size_t j = s.size() - 1;
-  while (true) {
-    while (i < s.size() / 2 && notVowel(s[i])) {
+  int i = 0;
+  int j = s.size() - 1;
+  while (i < j) {
+    // we incrementing left pointer until we have a vowel
+    while (notVowel(s[i]) && i < j) {
       ++i;
     }
 
-    while (j > s.size() / 2 && notVowel(s[j])) {
+    // decrementing right pointer until we have a wovel
+    while (notVowel(s[j]) && i < j) {
       --j;
     }
-    if (i >= s.size() / 2 && j <= s.size() / 2) break;
-    std::swap(s[i++], s[j--]);
+
+    // If loop ended because both pointer have reached vowels, we swap the
+    // vowels
+    if (i < j) {
+      std::swap(s[i++], s[j--]);
+    }
   }
   return s;
 }
@@ -189,4 +196,132 @@ TEST(reverseVowels, tests) {
   EXPECT_EQ(reverseVowels_tp("hello"), "holle");
   EXPECT_EQ(reverseVowels_tp("leetcode"), "leotcede");
   EXPECT_EQ(reverseVowels_tp("ai"), "ia");
+  EXPECT_EQ(reverseVowels_tp("a."), "a.");
+}
+
+// Given an input string s, reverse the order of the words.
+// A word is defined as a sequence of non-space characters. The words in s will
+// be separated by at least one space. Return a string of the words in reverse
+// order concatenated by a single space. Note that s may contain leading or
+// trailing spaces or multiple spaces between two words. The returned string
+// should only have a single space separating the words. Do not include any
+// extra spaces.
+std::string reverseWords(std::string s) {
+  struct StackFrame {
+    size_t begin;
+    size_t count;
+  };
+
+  size_t stack_ptr = 0;
+  std::vector<StackFrame> stack = {};
+
+  size_t i = 0;
+  while (i < s.size()) {
+    if (s[i] != ' ') {
+      const auto begin = i;
+      while (i < s.size() && s[i] != ' ') {
+        ++i;
+      }
+      stack.emplace_back(begin, i - begin);
+      while (i < s.size() && s[++i] == ' ') {
+      }
+    } else {
+      ++i;
+    }
+  }
+
+  std::string result = {};
+  for (size_t i = stack.size(); i-- > 0;) {
+    const auto& frame = stack[i];
+    result += s.substr(frame.begin, frame.count);
+    result += " ";
+  }
+  result.pop_back();
+  return result;
+}
+
+TEST(reverseWords, tests) {
+  EXPECT_EQ(reverseWords("the sky is blue"), "blue is sky the");
+  EXPECT_EQ(reverseWords("  hello world  "), "world hello");
+  EXPECT_EQ(reverseWords("a good   example"), "example good a");
+}
+
+// Given an integer array nums, return an array answer such that answer[i] is
+// equal to the product of all the elements of nums except nums[i]. The product
+// of any prefix or suffix of nums is guaranteed to fit in a 32-bit integer. You
+// must write an algorithm that runs in O(n) time and without using the division
+// operation.
+//
+// The concept that solves this problem is called sliding window. Let's say we
+// have an array A = [a b c d e f]. For each element, we accumulate a product of
+// all previous elements except this exact element, and storing in a separate
+// array:
+//
+// [ 1 1 1 1 1 1 ] - initial state, the prefix p is equals to 1: p = 1
+//
+// for the second element, that corresponds to b, we do p = p * A[1 - 1] = p *
+// a:
+//
+//       _
+// [ [a] b c d e f ], p = a
+// [  1  a 1 1 1 1 ]
+//
+// same thing for the next element, c: p = p * A[2 - 1] = p * b = a * b:
+//         _
+// [ [a b] c d e f ], p = p*b = ab
+// [ 1 a ab 1 1 1 ]
+// and so on:
+//           _
+// [ [a b c] d e f ], p = p*c = abc
+// [ 1 a ab abc 1 1 ]
+//             _
+// [ [a b c d] e f ], p = p*d = abcd
+// [ 1 a ab abc abcd, 1 ]
+//               _
+// [ [a b c d e] f ], p = p*e = abcde
+// [1 a ab abc abcd abcde]
+//
+// As we can see, for the last element we have the right answer. To finish with
+// the rest elements, we just have to pass the input in reverse order,
+// accumulating a product of all next element after the current:
+//           _
+// [ a b c d e [f] ], p = f
+// [ 1 a ab abc abcdf abcde ]
+//         _
+// [ a b c d [e f] ], p = p*e = ef
+// [ 1 a ab abcef abcdf abcde ]
+//       _
+// [ a b c [d e f] ], p = p*d = def
+// [ 1 a abdef abcef abcdf abcde ]
+//     _
+// [ a b [c d e f] ], p = p*c = cdef
+// [ 1 acdef abdef abcef abcdf abcde ]
+//
+// [ a [b c d e f] ], p = p*b = bcdef
+// [ bcdef acdef abdef abcef abcdf abcde ]
+//
+// SLIDING WINDOW!
+std::vector<int> productExceptSelf(const std::vector<int>& nums) {
+  int prefix = 1;
+  std::vector<int> res = {};
+  res.reserve(nums.size());
+  res.push_back(1);
+  for (int i = 1; i < nums.size(); ++i) {
+    prefix *= nums[i - 1];
+    res.push_back(prefix);
+  }
+
+  prefix = 1;
+  for (int i = nums.size() - 1; i-- > 0;) {
+    prefix *= nums[i + 1];
+    res[i] *= prefix;
+  }
+  return res;
+}
+
+TEST(produceExceptSelf, tests) {
+  const auto res1 = std::vector<int>{24, 12, 8, 6};
+  EXPECT_EQ(productExceptSelf({1, 2, 3, 4}), res1);
+  const auto res2 = std::vector<int>{0, 0, 9, 0, 0};
+  EXPECT_EQ(productExceptSelf({-1, 1, 0, -3, 3}), res2);
 }
